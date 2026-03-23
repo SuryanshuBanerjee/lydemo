@@ -1,0 +1,82 @@
+{
+  "mysql": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries or an ORM. Never concatenate user input into SQL strings."
+  },
+  "sql": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries or an ORM. Never concatenate user input into SQL strings."
+  },
+  "database": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries or an ORM. Never build queries with string formatting."
+  },
+  "query": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries with placeholders, never f-strings or .format()."
+  },
+  "login": {
+    "cwes": ["CWE-521", "CWE-798"],
+    "warning": "Avoid CWE-521 (Weak Password Requirements): Enforce minimum length >8 and use bcrypt for hashing. Avoid CWE-798 (Hardcoded Credentials): Never hardcode passwords or secrets."
+  },
+  "password": {
+    "cwes": ["CWE-521", "CWE-798"],
+    "warning": "Avoid CWE-521: Use bcrypt or argon2 for password hashing, never MD5/SHA1. Avoid CWE-798: Never store credentials in source code."
+  },
+  "auth": {
+    "cwes": ["CWE-521", "CWE-798"],
+    "warning": "Avoid CWE-521: Enforce strong password policies. Avoid CWE-798: Load secrets from environment variables, never hardcode them."
+  },
+  "upload": {
+    "cwes": ["CWE-434"],
+    "warning": "Avoid CWE-434 (Unrestricted Upload): Validate file type, size, and content. Store uploads outside the webroot. Never trust client-provided filenames."
+  },
+  "file": {
+    "cwes": ["CWE-22", "CWE-434"],
+    "warning": "Avoid CWE-22 (Path Traversal): Sanitise file paths, reject '../' sequences, use os.path.basename(). Avoid CWE-434: Validate uploads strictly."
+  },
+  "path": {
+    "cwes": ["CWE-22"],
+    "warning": "Avoid CWE-22 (Path Traversal): Never use user input directly in file paths. Use os.path.join() with basename sanitisation."
+  },
+  "subprocess": {
+    "cwes": ["CWE-78"],
+    "warning": "Avoid CWE-78 (OS Command Injection): Never pass user input to subprocess with shell=True. Use argument lists instead."
+  },
+  "os.system": {
+    "cwes": ["CWE-78"],
+    "warning": "Avoid CWE-78 (OS Command Injection): Never use os.system() with user input. Use subprocess with shell=False and argument lists."
+  },
+  "eval": {
+    "cwes": ["CWE-78"],
+    "warning": "Avoid CWE-78: Never use eval() or exec() on user-supplied input. Use safer alternatives like ast.literal_eval()."
+  },
+  "pickle": {
+    "cwes": ["CWE-502"],
+    "warning": "Avoid CWE-502 (Deserialization of Untrusted Data): Never unpickle data from untrusted sources. Use JSON or a safe serialisation format."
+  },
+  "yaml": {
+    "cwes": ["CWE-502"],
+    "warning": "Avoid CWE-502: Always use yaml.safe_load() instead of yaml.load(). Unsafe YAML loading allows arbitrary code execution."
+  },
+  "xml": {
+    "cwes": ["CWE-611"],
+    "warning": "Avoid CWE-611 (XML External Entity): Disable external entity processing. Use defusedxml instead of xml.etree."
+  },
+  "render": {
+    "cwes": ["CWE-79"],
+    "warning": "Avoid CWE-79 (Cross-Site Scripting): Never insert user input into HTML without escaping. Use render_template() not render_template_string() with raw input."
+  },
+  "html": {
+    "cwes": ["CWE-79"],
+    "warning": "Avoid CWE-79 (XSS): Always escape user input before rendering in HTML. Use template engines with auto-escaping enabled."
+  },
+  "cookie": {
+    "cwes": ["CWE-614"],
+    "warning": "Avoid CWE-614: Set Secure, HttpOnly, and SameSite flags on all cookies. Never store sensitive data in cookies without encryption."
+  },
+  "secret": {
+    "cwes": ["CWE-798"],
+    "warning": "Avoid CWE-798 (Hardcoded Credentials): Load secrets from environment variables or a secrets manager. Never commit them to source code."
+  }
+}

@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeBlanc — Secure Code Pipeline</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f5ede2; color: #2c1e12; }
+
+  .header { background: #fdf8f2; border-bottom: 1px solid #e0d0bc; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
+  .header h1 { font-size: 22px; font-weight: 600; color: #2c1e12; }
+  .header .tag { background: #7a4f2f; color: #fdf8f2; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; letter-spacing: 0.4px; }
+
+  .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
+
+  /* Prompt Section */
+  .prompt-section { background: #fdf8f2; border: 1px solid #e0d0bc; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+  .prompt-section h2 { font-size: 11px; color: #a08878; margin-bottom: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
+  .prompt-row { display: flex; gap: 12px; }
+  .prompt-input { flex: 1; background: #f5ede2; border: 1px solid #dcc9b2; color: #2c1e12; padding: 12px 16px; border-radius: 6px; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+  .prompt-input:focus { border-color: #9a6845; }
+  .prompt-input::placeholder { color: #c0a898; }
+
+  .btn { padding: 10px 20px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+  .btn-primary { background: #7a4f2f; color: #fdf8f2; }
+  .btn-primary:hover { background: #5e3a22; }
+  .btn-primary:disabled { background: #e0d0bc; color: #b8a898; cursor: wait; }
+
+  .demo-prompts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+  .demo-chip { background: #f0e4d4; border: 1px solid #dcc9b2; color: #8a6a55; padding: 4px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; transition: 0.15s; }
+  .demo-chip:hover { border-color: #9a6845; color: #5e3a22; background: #e8d8c4; }
+
+  /* Status */
+  .status-bar { background: #fdf8f2; border: 1px solid #e0d0bc; border-radius: 8px; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  .spinner { width: 18px; height: 18px; border: 2px solid #e0d0bc; border-top-color: #9a6845; border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .status-text { color: #a08878; font-size: 14px; }
+
+  /* Results Grid */
+  .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+
+  .model-card { background: #fdf8f2; border: 1px solid #e0d0bc; border-radius: 8px; overflow: hidden; }
+  .model-header { padding: 16px 20px; border-bottom: 1px solid #e0d0bc; display: flex; justify-content: space-between; align-items: center; background: #faf3ea; }
+  .model-name { font-size: 16px; font-weight: 600; }
+  .model-name.gemini { color: #6e4fa8; }
+  .model-name.groq { color: #c05c28; }
+
+  .mode-tabs { display: flex; border-bottom: 1px solid #e0d0bc; background: #faf3ea; }
+  .mode-tab { flex: 1; padding: 10px; text-align: center; font-size: 11px; font-weight: 600; cursor: pointer; color: #a08878; border-bottom: 2px solid transparent; transition: 0.15s; text-transform: uppercase; letter-spacing: 0.5px; }
+  .mode-tab:hover { color: #5e3a22; }
+  .mode-tab.active { color: #7a4f2f; border-bottom-color: #7a4f2f; }
+
+  .mode-content { padding: 16px 20px; }
+
+  /* Stat badges */
+  .stats-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
+  .stat-badge { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .stat-clean { background: #e8f4ec; color: #2e6b44; border: 1px solid #b8d9c4; }
+  .stat-vuln { background: #fceae8; color: #8c3228; border: 1px solid #f0bcb4; }
+  .stat-repaired { background: #fdf3d8; color: #7a5818; border: 1px solid #ecd898; }
+  .stat-info { background: #e8eef8; color: #3b5e8a; border: 1px solid #bccce8; }
+
+  /* Vulnerability list */
+  .vuln-list { margin-bottom: 16px; }
+  .vuln-item { background: #fdf0ec; border: 1px solid #f0ccc4; border-radius: 6px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; }
+  .vuln-cwe { color: #8c3228; font-weight: 700; margin-right: 8px; }
+  .vuln-sev { color: #9a6818; margin-right: 8px; font-size: 11px; text-transform: uppercase; font-weight: 600; }
+  .vuln-msg { color: #4a3428; }
+  .vuln-line { color: #a08878; font-size: 11px; margin-top: 4px; }
+
+  /* Code block */
+  .code-block { background: #f0e4d4; border: 1px solid #dcc9b2; border-radius: 6px; padding: 14px 16px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.6; color: #3a2518; overflow-x: auto; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+
+  /* Repair timeline */
+  .repair-timeline { margin-bottom: 16px; }
+  .repair-step { display: flex; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ecddc8; font-size: 13px; }
+  .repair-step:last-child { border-bottom: none; }
+  .repair-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .repair-dot.has-vulns { background: #c0503a; }
+  .repair-dot.clean { background: #3a8c58; }
+  .repair-label { color: #a08878; }
+  .repair-count { font-weight: 600; }
+
+  /* Enrichment preview */
+  .enriched-block { background: #eef3fc; border: 1px solid #c8d8f0; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #2e4a78; white-space: pre-wrap; line-height: 1.5; }
+  .enriched-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
+
+  .section-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
+
+  /* Empty state */
+  .empty-state { text-align: center; padding: 80px 40px; color: #c0a898; }
+  .empty-state h3 { font-size: 18px; margin-bottom: 8px; color: #a08878; }
+  .empty-state p { font-size: 14px; }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { useState, useEffect } = React;
+const API = "http://localhost:5000/api";
+
+function App() {
+  const [prompt, setPrompt] = useState("");
+  const [demoPrompts, setDemoPrompts] = useState([]);
+  const [results, setResults] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [statusMsg, setStatusMsg] = useState("");
+  const [activeTabs, setActiveTabs] = useState({ gemini: "enriched_repair", groq: "enriched_repair" });
+
+  useEffect(() => {
+    fetch(`${API}/prompts`).then(r => r.json()).then(setDemoPrompts).catch(() => {});
+  }, []);
+
+  const runPipeline = async () => {
+    if (!prompt.trim()) return;
+    setLoading(true);
+    setResults(null);
+
+    const steps = [
+      "Running Engine A — enriching prompt with CWE warnings...",
+      "Calling Gemini (plain mode)...",
+      "Calling Groq (plain mode)...",
+      "Running Engine B — scanning with Semgrep + Bandit...",
+      "Calling Gemini (enriched mode)...",
+      "Calling Groq (enriched mode)...",
+      "Running Engine B — scanning enriched outputs...",
+      "Running Engine C — repair loop on Gemini output...",
+      "Running Engine C — repair loop on Groq output...",
+      "Saving results to database...",
+    ];
+    let stepIdx = 0;
+    setStatusMsg(steps[0]);
+    const interval = setInterval(() => {
+      stepIdx = Math.min(stepIdx + 1, steps.length - 1);
+      setStatusMsg(steps[stepIdx]);
+    }, 4000);
+
+    try {
+      const res = await fetch(`${API}/compare`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: prompt.trim(), prompt_id: "demo" }),
+      });
+      const data = await res.json();
+      if (data.error) {
+        setStatusMsg(`Error: ${data.error}`);
+      } else {
+        setResults(data);
+        setStatusMsg("");
+      }
+    } catch (err) {
+      setStatusMsg(`Error: ${err.message}`);
+    } finally {
+      clearInterval(interval);
+      setLoading(false);
+    }
+  };
+
+  const setTab = (model, mode) => {
+    setActiveTabs(prev => ({ ...prev, [model]: mode }));
+  };
+
+  return (
+    <div>
+      <div className="header">
+        <h1>LeBlanc</h1>
+        <span className="tag">PIPELINE DEMO</span>
+        <span style={{ color: "#a08878", fontSize: 13, marginLeft: "auto" }}>
+          Automated Prompt Enrichment &amp; Iterative Repair for Secure LLM-Generated Code
+        </span>
+      </div>
+
+      <div className="container">
+        {/* Prompt Input */}
+        <div className="prompt-section">
+          <h2>Enter a coding prompt</h2>
+          <div className="prompt-row">
+            <input
+              className="prompt-input"
+              placeholder="e.g. Write a Flask endpoint for user login with MySQL..."
+              value={prompt}
+              onChange={e => setPrompt(e.target.value)}
+              onKeyDown={e => e.key === "Enter" && !loading && runPipeline()}
+            />
+            <button className="btn btn-primary" onClick={runPipeline} disabled={loading || !prompt.trim()}>
+              {loading ? "Running..." : "Run Pipeline"}
+            </button>
+          </div>
+          <div className="demo-prompts">
+            {demoPrompts.map(p => (
+              <span key={p.id} className="demo-chip" onClick={() => setPrompt(p.prompt)}>
+                {p.prompt.length > 60 ? p.prompt.slice(0, 60) + "..." : p.prompt}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        {/* Status Bar */}
+        {loading && (
+          <div className="status-bar">
+            <div className="spinner" />
+            <span className="status-text">{statusMsg}</span>
+          </div>
+        )}
+
+        {/* Results */}
+        {results ? (
+          <div className="results-grid">
+            <ModelCard model="gemini" label="Gemini 2.5 Flash" data={results.gemini} tab={activeTabs.gemini} setTab={setTab} />
+            <ModelCard model="groq" label="Groq (Llama 3.3 70B)" data={results.groq} tab={activeTabs.groq} setTab={setTab} />
+          </div>
+        ) : !loading ? (
+          <div className="empty-state">
+            <h3>No results yet</h3>
+            <p>Enter a prompt above or click a demo prompt to run the pipeline.</p>
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
+function ModelCard({ model, label, data, tab, setTab }) {
+  if (!data) return null;
+
+  const modes = [
+    { key: "plain", label: "Plain" },
+    { key: "enriched", label: "Enriched" },
+    { key: "enriched_repair", label: "Enriched + Repair" },
+  ];
+
+  const current = data[tab];
+  if (!current) return <div className="model-card"><div className="model-header"><span className={`model-name ${model}`}>{label}</span></div><div className="mode-content"><p style={{ color: "#a08878" }}>No data</p></div></div>;
+
+  if (current.error) return (
+    <div className="model-card">
+      <div className="model-header"><span className={`model-name ${model}`}>{label}</span></div>
+      <div className="mode-content"><p style={{ color: "#8c3228" }}>Error: {current.error}</p></div>
+    </div>
+  );
+
+  const vulns = current.scan_results || [];
+  const repairResult = current.repair_result || {};
+  const iterations = repairResult.iterations || [];
+
+  return (
+    <div className="model-card">
+      <div className="model-header">
+        <span className={`model-name ${model}`}>{label}</span>
+        <span className={`stat-badge ${current.vuln_count === 0 ? "stat-clean" : "stat-vuln"}`}>
+          {current.vuln_count === 0 ? "CLEAN" : `${current.vuln_count} VULN${current.vuln_count > 1 ? "S" : ""}`}
+        </span>
+      </div>
+
+      <div className="mode-tabs">
+        {modes.map(m => (
+          <div key={m.key} className={`mode-tab ${tab === m.key ? "active" : ""}`} onClick={() => setTab(model, m.key)}>
+            {m.label}
+            {data[m.key] && !data[m.key].error && (
+              <span style={{ marginLeft: 6 }}>
+                ({data[m.key].vuln_count === 0 ? "✓" : data[m.key].vuln_count})
+              </span>
+            )}
+          </div>
+        ))}
+      </div>
+
+      <div className="mode-content">
+        {/* Stats */}
+        <div className="stats-row">
+          <span className={`stat-badge ${vulns.length === 0 ? "stat-clean" : "stat-vuln"}`}>
+            {vulns.length} finding{vulns.length !== 1 ? "s" : ""} after scan
+          </span>
+          {current.final_status === "clean" && tab === "enriched_repair" && current.total_iterations > 0 && (
+            <span className="stat-badge stat-repaired">Repaired in {current.total_iterations} iteration{current.total_iterations > 1 ? "s" : ""}</span>
+          )}
+          {current.final_status === "not_converged" && (
+            <span className="stat-badge stat-vuln">Did not converge after {current.total_iterations} iterations</span>
+          )}
+          {current.matched_cwes && current.matched_cwes.length > 0 && (
+            <span className="stat-badge stat-info">{current.matched_cwes.join(", ")}</span>
+          )}
+        </div>
+
+        {/* Enriched prompt preview (only for enriched modes) */}
+        {tab !== "plain" && current.enriched_prompt && current.enriched_prompt !== current.prompt_text && (
+          <div>
+            <div className="enriched-label">Engine A — Enriched Prompt</div>
+            <div className="enriched-block">{current.enriched_prompt}</div>
+          </div>
+        )}
+
+        {/* Vulnerabilities */}
+        {vulns.length > 0 && (
+          <div>
+            <div className="section-label">Engine B — Vulnerabilities Found</div>
+            <div className="vuln-list">
+              {vulns.map((v, i) => (
+                <div key={i} className="vuln-item">
+                  <span className="vuln-cwe">{(v.cwes || []).join(", ")}</span>
+                  <span className="vuln-sev">{v.severity}</span>
+                  <span className="vuln-msg">{v.message}</span>
+                  <div className="vuln-line">Line {v.line} · {v.tool}</div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Repair timeline */}
+        {iterations.length > 0 && (
+          <div>
+            <div className="section-label">Engine C — Repair Timeline</div>
+            <div className="repair-timeline">
+              <div className="repair-step">
+                <div className="repair-dot has-vulns" />
+                <span className="repair-label">Initial scan:</span>
+                <span className="repair-count" style={{ color: "#8c3228" }}>{vulns.length} vulnerabilities</span>
+              </div>
+              {iterations.map((it, i) => (
+                <div key={i} className="repair-step">
+                  <div className={`repair-dot ${it.vulns_after === 0 ? "clean" : "has-vulns"}`} />
+                  <span className="repair-label">Iteration {it.iteration}:</span>
+                  <span className="repair-count" style={{ color: it.vulns_after === 0 ? "#2e6b44" : "#8c3228" }}>
+                    {it.vulns_before} → {it.vulns_after} vulnerabilities
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Generated code */}
+        <div className="section-label">Generated Code</div>
+        <div className="code-block">
+          {(tab === "enriched_repair" && repairResult.final_code) ? repairResult.final_code : (current.clean_code || current.generated_code || "No code generated")}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+ReactDOM.render(<App />, document.getElementById("root"));
+</script>
+</body>
+</html>
