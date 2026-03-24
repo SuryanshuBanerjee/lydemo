@@ -13,29 +13,29 @@
 
   .header { background: #fdf8f2; border-bottom: 1px solid #e0d0bc; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
   .header h1 { font-size: 22px; font-weight: 600; color: #2c1e12; }
-  .header .tag { background: #7a4f2f; color: #fdf8f2; font-size: 11px; padding: 2px 8px; border-radius: 12px; font-weight: 600; letter-spacing: 0.4px; }
+  .header .tag { background: #7a4f2f; color: #fdf8f2; font-size: 11px; padding: 2px 8px; font-weight: 600; letter-spacing: 0.4px; }
 
   .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
 
   /* Prompt Section */
-  .prompt-section { background: #fdf8f2; border: 1px solid #e0d0bc; border-radius: 8px; padding: 24px; margin-bottom: 24px; }
+  .prompt-section { background: #fdf8f2; border: 1px solid #e0d0bc; padding: 24px; margin-bottom: 24px; }
   .prompt-section h2 { font-size: 11px; color: #a08878; margin-bottom: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.6px; }
   .prompt-row { display: flex; gap: 12px; }
-  .prompt-input { flex: 1; background: #f5ede2; border: 1px solid #dcc9b2; color: #2c1e12; padding: 12px 16px; border-radius: 6px; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.15s; }
+  .prompt-input { flex: 1; background: #f5ede2; border: 1px solid #dcc9b2; color: #2c1e12; padding: 12px 16px; font-size: 15px; font-family: inherit; outline: none; transition: border-color 0.15s; }
   .prompt-input:focus { border-color: #9a6845; }
   .prompt-input::placeholder { color: #c0a898; }
 
-  .btn { padding: 10px 20px; border-radius: 6px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+  .btn { padding: 10px 20px; border: none; font-size: 14px; font-weight: 600; cursor: pointer; transition: 0.15s; }
   .btn-primary { background: #7a4f2f; color: #fdf8f2; }
   .btn-primary:hover { background: #5e3a22; }
   .btn-primary:disabled { background: #e0d0bc; color: #b8a898; cursor: wait; }
 
   .demo-prompts { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
-  .demo-chip { background: #f0e4d4; border: 1px solid #dcc9b2; color: #8a6a55; padding: 4px 12px; border-radius: 16px; font-size: 12px; cursor: pointer; transition: 0.15s; }
+  .demo-chip { background: #f0e4d4; border: 1px solid #dcc9b2; color: #8a6a55; padding: 4px 12px; font-size: 12px; cursor: pointer; transition: 0.15s; }
   .demo-chip:hover { border-color: #9a6845; color: #5e3a22; background: #e8d8c4; }
 
   /* Status */
-  .status-bar { background: #fdf8f2; border: 1px solid #e0d0bc; border-radius: 8px; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
+  .status-bar { background: #fdf8f2; border: 1px solid #e0d0bc; padding: 16px 24px; margin-bottom: 24px; display: flex; align-items: center; gap: 12px; }
   .spinner { width: 18px; height: 18px; border: 2px solid #e0d0bc; border-top-color: #9a6845; border-radius: 50%; animation: spin 0.8s linear infinite; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .status-text { color: #a08878; font-size: 14px; }
@@ -43,7 +43,7 @@
   /* Results Grid */
   .results-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
 
-  .model-card { background: #fdf8f2; border: 1px solid #e0d0bc; border-radius: 8px; overflow: hidden; }
+  .model-card { background: #fdf8f2; border: 1px solid #e0d0bc; overflow: hidden; }
   .model-header { padding: 16px 20px; border-bottom: 1px solid #e0d0bc; display: flex; justify-content: space-between; align-items: center; background: #faf3ea; }
   .model-name { font-size: 16px; font-weight: 600; }
   .model-name.gemini { color: #6e4fa8; }
@@ -58,7 +58,7 @@
 
   /* Stat badges */
   .stats-row { display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; }
-  .stat-badge { padding: 5px 11px; border-radius: 6px; font-size: 12px; font-weight: 600; }
+  .stat-badge { padding: 5px 11px; font-size: 12px; font-weight: 600; }
   .stat-clean { background: #e8f4ec; color: #2e6b44; border: 1px solid #b8d9c4; }
   .stat-vuln { background: #fceae8; color: #8c3228; border: 1px solid #f0bcb4; }
   .stat-repaired { background: #fdf3d8; color: #7a5818; border: 1px solid #ecd898; }
@@ -66,14 +66,14 @@
 
   /* Vulnerability list */
   .vuln-list { margin-bottom: 16px; }
-  .vuln-item { background: #fdf0ec; border: 1px solid #f0ccc4; border-radius: 6px; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; }
+  .vuln-item { background: #fdf0ec; border: 1px solid #f0ccc4; padding: 10px 14px; margin-bottom: 6px; font-size: 13px; }
   .vuln-cwe { color: #8c3228; font-weight: 700; margin-right: 8px; }
   .vuln-sev { color: #9a6818; margin-right: 8px; font-size: 11px; text-transform: uppercase; font-weight: 600; }
   .vuln-msg { color: #4a3428; }
   .vuln-line { color: #a08878; font-size: 11px; margin-top: 4px; }
 
   /* Code block */
-  .code-block { background: #f0e4d4; border: 1px solid #dcc9b2; border-radius: 6px; padding: 14px 16px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.6; color: #3a2518; overflow-x: auto; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
+  .code-block { background: #f0e4d4; border: 1px solid #dcc9b2; padding: 14px 16px; font-family: 'Consolas', 'Fira Code', monospace; font-size: 12.5px; line-height: 1.6; color: #3a2518; overflow-x: auto; max-height: 400px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; }
 
   /* Repair timeline */
   .repair-timeline { margin-bottom: 16px; }
@@ -86,7 +86,7 @@
   .repair-count { font-weight: 600; }
 
   /* Enrichment preview */
-  .enriched-block { background: #eef3fc; border: 1px solid #c8d8f0; border-radius: 6px; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #2e4a78; white-space: pre-wrap; line-height: 1.5; }
+  .enriched-block { background: #eef3fc; border: 1px solid #c8d8f0; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #2e4a78; white-space: pre-wrap; line-height: 1.5; }
   .enriched-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
 
   .section-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
