@@ -13,7 +13,7 @@ def get_db():
 
 
 def init_db():
-    """Create tables if they don't exist."""
+    """Create tables if they don't exist, and migrate existing schema."""
     conn = get_db()
     conn.execute("""
         CREATE TABLE IF NOT EXISTS runs (
@@ -22,6 +22,8 @@ def init_db():
             prompt_text TEXT,
             enriched_prompt TEXT,
             matched_cwes TEXT,
+            matched_keywords TEXT,
+            keyword_cwe_pairs TEXT,
             model TEXT,
             mode TEXT,
             generated_code TEXT,
@@ -34,6 +36,12 @@ def init_db():
             timestamp TEXT
         )
     """)
+    # Migrate existing databases that predate these columns
+    for col, col_type in [("matched_keywords", "TEXT"), ("keyword_cwe_pairs", "TEXT")]:
+        try:
+            conn.execute(f"ALTER TABLE runs ADD COLUMN {col} {col_type}")
+        except sqlite3.OperationalError:
+            pass  # Column already exists
     conn.commit()
     conn.close()
 
@@ -45,16 +53,19 @@ def save_run(data):
         """
         INSERT INTO runs (
             prompt_id, prompt_text, enriched_prompt, matched_cwes,
+            matched_keywords, keyword_cwe_pairs,
             model, mode, generated_code, clean_code,
             scan_results, vuln_count, repair_result,
             final_status, total_iterations, timestamp
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """,
         (
             data.get("prompt_id", ""),
             data.get("prompt_text", ""),
             data.get("enriched_prompt", ""),
             json.dumps(data.get("matched_cwes", [])),
+            json.dumps(data.get("matched_keywords", [])),
+            json.dumps(data.get("keyword_cwe_pairs", [])),
             data.get("model", ""),
             data.get("mode", ""),
             data.get("generated_code", ""),
@@ -80,6 +91,8 @@ def get_all_runs():
     for row in rows:
         r = dict(row)
         r["matched_cwes"] = json.loads(r["matched_cwes"] or "[]")
+        r["matched_keywords"] = json.loads(r.get("matched_keywords") or "[]")
+        r["keyword_cwe_pairs"] = json.loads(r.get("keyword_cwe_pairs") or "[]")
         r["scan_results"] = json.loads(r["scan_results"] or "[]")
         r["repair_result"] = json.loads(r["repair_result"] or "{}")
         results.append(r)

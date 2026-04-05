@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeBlanc — Use Case Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: #f5ede2; color: #2c1e12; font-size: 14px; }
+
+  /* Header */
+  .header { background: #fdf8f2; border-bottom: 1px solid #e0d0bc; padding: 14px 32px; display: flex; align-items: center; gap: 14px; }
+  .header h1 { font-size: 20px; font-weight: 600; color: #2c1e12; }
+  .header .tag { background: #7a4f2f; color: #fdf8f2; font-size: 10px; padding: 2px 8px; font-weight: 700; letter-spacing: 0.5px; }
+  .header-sub { color: #a08878; font-size: 12px; margin-left: auto; }
+
+  /* Lab meta bar */
+  .lab-bar { background: #f0e4d4; border-bottom: 1px solid #dcc9b2; padding: 8px 32px; display: flex; gap: 40px; font-size: 11px; color: #7a5c48; }
+  .lab-bar span { font-weight: 600; color: #2c1e12; margin-left: 6px; }
+
+  .container { max-width: 860px; margin: 0 auto; padding: 28px 32px; }
+
+  /* Use case title */
+  .uc-title { border-left: 3px solid #7a4f2f; padding-left: 14px; margin-bottom: 28px; }
+  .uc-title h2 { font-size: 15px; font-weight: 700; color: #2c1e12; margin-bottom: 3px; }
+  .uc-title p { font-size: 12px; color: #8a6a55; }
+
+  /* Prompt section */
+  .section { background: #fdf8f2; border: 1px solid #e0d0bc; margin-bottom: 16px; }
+  .section-head { padding: 10px 16px; border-bottom: 1px solid #e0d0bc; background: #faf3ea; display: flex; align-items: center; gap: 10px; }
+  .step-num { background: #7a4f2f; color: #fdf8f2; font-size: 10px; font-weight: 700; width: 20px; height: 20px; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .step-num.done { background: #3a8c58; }
+  .section-head h3 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: #5e3a22; }
+  .section-head .engine-tag { font-size: 10px; color: #a08878; margin-left: auto; font-weight: 600; }
+  .section-body { padding: 16px; }
+
+  /* Prompt input */
+  .prompt-row { display: flex; gap: 10px; }
+  .prompt-input { flex: 1; background: #f5ede2; border: 1px solid #dcc9b2; color: #2c1e12; padding: 10px 14px; font-size: 14px; font-family: inherit; outline: none; }
+  .prompt-input:focus { border-color: #9a6845; }
+  .btn { padding: 10px 20px; border: none; font-size: 13px; font-weight: 700; cursor: pointer; background: #7a4f2f; color: #fdf8f2; letter-spacing: 0.3px; }
+  .btn:hover { background: #5e3a22; }
+  .btn:disabled { background: #c0a898; cursor: default; }
+  .demo-note { margin-top: 10px; font-size: 11px; color: #a08878; }
+  .demo-note b { color: #7a4f2f; cursor: pointer; border-bottom: 1px dashed #c0a898; }
+  .demo-note b:hover { color: #5e3a22; }
+
+  /* Pipeline steps (hidden initially) */
+  .pipeline-step { display: none; }
+  .pipeline-step.visible { display: block; animation: fadeIn 0.3s ease; }
+  @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+
+  /* CWE trigger list */
+  .cwe-list { margin-bottom: 12px; }
+  .cwe-row { display: flex; align-items: baseline; gap: 8px; padding: 5px 0; border-bottom: 1px solid #ecddc8; font-size: 12px; }
+  .cwe-row:last-child { border-bottom: none; }
+  .kw { font-family: 'Consolas', monospace; color: #5e3a22; font-weight: 700; background: #f0e4d4; padding: 1px 6px; }
+  .arrow { color: #c0a898; }
+  .cwe-id { color: #3b5e8a; font-weight: 700; }
+  .cwe-desc { color: #6a5248; font-size: 11px; }
+
+  /* Enriched prompt block */
+  .enriched-block { background: #eef3fc; border: 1px solid #c8d8f0; padding: 12px 14px; font-size: 12px; color: #2e4a78; white-space: pre-wrap; line-height: 1.6; }
+  .block-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: #a08878; font-weight: 700; margin-bottom: 6px; }
+
+  /* Code block */
+  .code-block { background: #f0e4d4; border: 1px solid #dcc9b2; padding: 14px 16px; font-family: 'Consolas', monospace; font-size: 12px; line-height: 1.65; color: #3a2518; overflow-x: auto; white-space: pre; }
+  .code-block.repaired { background: #eaf4ee; border-color: #b8d9c4; color: #1a3a28; }
+
+  /* Vuln findings */
+  .vuln-item { background: #fdf0ec; border: 1px solid #f0ccc4; padding: 10px 14px; margin-bottom: 6px; }
+  .vuln-item:last-child { margin-bottom: 0; }
+  .vuln-top { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+  .vuln-cwe { color: #8c3228; font-weight: 700; font-size: 12px; }
+  .vuln-sev { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.3px; padding: 1px 6px; }
+  .sev-critical { background: #8c3228; color: #fff; }
+  .sev-high { background: #c06828; color: #fff; }
+  .vuln-msg { font-size: 12px; color: #4a3428; }
+  .vuln-line { font-size: 11px; color: #a08878; margin-top: 3px; font-family: 'Consolas', monospace; }
+
+  /* Diff highlight in repaired code */
+  .diff-add { background: #c8ecd4; }
+
+  /* Status badge row */
+  .status-row { display: flex; gap: 10px; align-items: center; margin-bottom: 14px; flex-wrap: wrap; }
+  .badge { font-size: 11px; font-weight: 700; padding: 3px 10px; border: 1px solid; }
+  .badge-vuln { background: #fceae8; color: #8c3228; border-color: #f0bcb4; }
+  .badge-clean { background: #e8f4ec; color: #2e6b44; border-color: #b8d9c4; }
+  .badge-repaired { background: #fdf3d8; color: #7a5818; border-color: #ecd898; }
+
+  /* Repair note */
+  .repair-note { font-size: 12px; color: #5e3a22; background: #fdf8f2; border: 1px solid #dcc9b2; padding: 10px 14px; margin-bottom: 14px; }
+  .repair-note b { color: #3a8c58; }
+
+  /* Final result */
+  .final-bar { background: #e8f4ec; border: 1px solid #b8d9c4; padding: 14px 16px; display: flex; align-items: center; gap: 12px; margin-top: 4px; }
+  .final-check { font-size: 20px; color: #2e6b44; }
+  .final-text h4 { font-size: 13px; font-weight: 700; color: #1a5c2e; margin-bottom: 2px; }
+  .final-text p { font-size: 11px; color: #4a8a5e; }
+
+  /* Spinner */
+  .spinner-row { display: flex; align-items: center; gap: 10px; padding: 10px 0; color: #a08878; font-size: 12px; }
+  .spinner { width: 14px; height: 14px; border: 2px solid #e0d0bc; border-top-color: #9a6845; border-radius: 50%; animation: spin 0.7s linear infinite; display: none; }
+  .spinner.active { display: block; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .divider { border: none; border-top: 1px solid #e0d0bc; margin: 24px 0; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>LeBlanc</h1>
+  <span class="tag">USE CASE DEMO</span>
+  <span class="header-sub">Object Oriented Software Engineering — Experiment No. 01</span>
+</div>
+
+<div class="lab-bar">
+  <div>Batch: <span>—</span></div>
+  <div>Roll No.: <span>—</span></div>
+  <div>Experiment No.: <span>01</span></div>
+  <div>Aim: <span>Mini Project — Secure LLM Code Generation Pipeline</span></div>
+</div>
+
+<div class="container">
+
+  <div class="uc-title">
+    <h2>Use Case: Secure Code Generation via LeBlanc Pipeline</h2>
+    <p>Actor: Developer &nbsp;·&nbsp; Trigger: User submits a coding prompt &nbsp;·&nbsp; Goal: Receive security-hardened, vulnerability-free generated code</p>
+  </div>
+
+  <!-- Step 0: Input -->
+  <div class="section">
+    <div class="section-head">
+      <div class="step-num" id="num0">1</div>
+      <h3>User Input — Coding Prompt</h3>
+      <span class="engine-tag">TRIGGER</span>
+    </div>
+    <div class="section-body">
+      <div class="prompt-row">
+        <input class="prompt-input" id="promptInput" placeholder="Enter a coding prompt..." value="Write a Flask endpoint for user login that checks username and password against a MySQL database" />
+        <button class="btn" id="runBtn" onclick="runDemo()">Run Pipeline</button>
+      </div>
+      <div class="demo-note">
+        This demo uses pre-computed results for illustration. &nbsp;<b onclick="fillPrompt()">Load demo prompt</b>
+      </div>
+    </div>
+  </div>
+
+  <div id="spinnerRow" class="spinner-row" style="display:none;">
+    <div class="spinner active"></div>
+    <span id="spinnerText">Initialising pipeline...</span>
+  </div>
+
+  <!-- Step 1: Engine A -->
+  <div class="section pipeline-step" id="step1">
+    <div class="section-head">
+      <div class="step-num done">2</div>
+      <h3>Prompt Enrichment — CWE Warnings Appended</h3>
+      <span class="engine-tag">ENGINE A</span>
+    </div>
+    <div class="section-body">
+      <div class="block-label">Keywords detected → CWE mappings</div>
+      <div class="cwe-list">
+        <div class="cwe-row">
+          <span class="kw">login</span>
+          <span class="arrow">→</span>
+          <span class="cwe-id">CWE-521</span>
+          <span class="cwe-desc">Weak Password Requirements</span>
+        </div>
+        <div class="cwe-row">
+          <span class="kw">mysql</span>
+          <span class="arrow">→</span>
+          <span class="cwe-id">CWE-89</span>
+          <span class="cwe-desc">Improper Neutralisation of SQL Query (SQL Injection)</span>
+        </div>
+        <div class="cwe-row">
+          <span class="kw">password</span>
+          <span class="arrow">→</span>
+          <span class="cwe-id">CWE-798</span>
+          <span class="cwe-desc">Use of Hard-coded Credentials</span>
+        </div>
+      </div>
+      <div class="block-label">Enriched prompt sent to LLM</div>
+      <div class="enriched-block">Write a Flask endpoint for user login that checks username and password against a MySQL database
+
+IMPORTANT SECURITY REQUIREMENTS:
+- Avoid SQL injection: use parameterised queries or an ORM; never interpolate user input into SQL strings (CWE-89)
+- Do not hard-code credentials; load secrets from environment variables or a secrets manager (CWE-798)
+- Enforce minimum password length and complexity; hash passwords with bcrypt or argon2 before storage (CWE-521)
+
+Write secure code that avoids the above vulnerabilities.</div>
+    </div>
+  </div>
+
+  <!-- Step 2: Generated Code -->
+  <div class="section pipeline-step" id="step2">
+    <div class="section-head">
+      <div class="step-num done">3</div>
+      <h3>LLM Output — Generated Code (Plain Mode)</h3>
+      <span class="engine-tag">GEMINI 2.5 FLASH</span>
+    </div>
+    <div class="section-body">
+      <div class="status-row">
+        <span class="badge badge-vuln">2 VULNERABILITIES DETECTED</span>
+        <span style="font-size:11px; color:#a08878;">Plain mode — no security warnings injected</span>
+      </div>
+<div class="code-block">from flask import Flask, request, jsonify
+import mysql.connector
+
+app = Flask(__name__)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+
+    conn = mysql.connector.connect(
+        host="localhost",
+        user="root",
+        password="admin123",      # hard-coded credential
+        database="users"
+    )
+    cursor = conn.cursor()
+    query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
+    cursor.execute(query)          # SQL injection risk
+    user = cursor.fetchone()
+
+    if user:
+        return jsonify({"status": "success", "message": "Login successful"})
+    return jsonify({"status": "error", "message": "Invalid credentials"})</div>
+    </div>
+  </div>
+
+  <!-- Step 3: Engine B -->
+  <div class="section pipeline-step" id="step3">
+    <div class="section-head">
+      <div class="step-num done">4</div>
+      <h3>Vulnerability Scan — Static Analysis Results</h3>
+      <span class="engine-tag">ENGINE B · SEMGREP + BANDIT</span>
+    </div>
+    <div class="section-body">
+      <div class="vuln-item">
+        <div class="vuln-top">
+          <span class="vuln-cwe">CWE-89</span>
+          <span class="vuln-sev sev-critical">Critical</span>
+        </div>
+        <div class="vuln-msg">String formatting used to construct SQL query — user input interpolated directly, enabling SQL injection attacks.</div>
+        <div class="vuln-line">Line 16 &nbsp;·&nbsp; bandit / B608</div>
+      </div>
+      <div class="vuln-item">
+        <div class="vuln-top">
+          <span class="vuln-cwe">CWE-798</span>
+          <span class="vuln-sev sev-high">High</span>
+        </div>
+        <div class="vuln-msg">Hard-coded password "admin123" found in database connection parameters.</div>
+        <div class="vuln-line">Line 12 &nbsp;·&nbsp; bandit / B105</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Engine C -->
+  <div class="section pipeline-step" id="step4">
+    <div class="section-head">
+      <div class="step-num done">5</div>
+      <h3>Iterative Repair — Vulnerability Findings Fed Back to LLM</h3>
+      <span class="engine-tag">ENGINE C · ITERATION 1 OF 3</span>
+    </div>
+    <div class="section-body">
+      <div class="repair-note">
+        Vulnerability report sent to LLM with instruction to repair. Re-scan after repair: <b>0 vulnerabilities — clean.</b>
+      </div>
+<div class="code-block repaired">from flask import Flask, request, jsonify
+import mysql.connector
+import bcrypt
+import os
+
+app = Flask(__name__)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+
+    conn = mysql.connector.connect(
+        host=os.environ.get("DB_HOST"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASS"),   # loaded from env
+        database=os.environ.get("DB_NAME")
+    )
+    cursor = conn.cursor()
+    query = "SELECT password_hash FROM users WHERE username = %s"
+    cursor.execute(query, (username,))          # parameterised query
+    row = cursor.fetchone()
+
+    if row and bcrypt.checkpw(password.encode(), row[0].encode()):
+        return jsonify({"status": "success", "message": "Login successful"})
+    return jsonify({"status": "error", "message": "Invalid credentials"})</div>
+
+      <div class="final-bar" style="margin-top:14px;">
+        <div class="final-check">&#10003;</div>
+        <div class="final-text">
+          <h4>Pipeline complete — code is clean</h4>
+          <p>SQL injection fixed (parameterised query) &nbsp;·&nbsp; Hard-coded credentials removed (env vars) &nbsp;·&nbsp; Repaired in 1 iteration</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /container -->
+
+<script>
+  const STEPS = ['step1','step2','step3','step4'];
+  const DELAYS = [600, 1400, 2200, 3200];
+  const MSGS = [
+    'Engine A — scanning prompt for CWE keywords...',
+    'Calling LLM (plain mode)...',
+    'Engine B — running Semgrep + Bandit...',
+    'Engine C — sending repair request to LLM...',
+  ];
+
+  function fillPrompt() {
+    document.getElementById('promptInput').value =
+      'Write a Flask endpoint for user login that checks username and password against a MySQL database';
+  }
+
+  function runDemo() {
+    const btn = document.getElementById('runBtn');
+    btn.disabled = true;
+
+    // Reset steps
+    STEPS.forEach(id => {
+      const el = document.getElementById(id);
+      el.classList.remove('visible');
+      el.style.display = 'none';
+    });
+
+    const spinnerRow = document.getElementById('spinnerRow');
+    const spinnerText = document.getElementById('spinnerText');
+    spinnerRow.style.display = 'flex';
+    spinnerText.textContent = MSGS[0];
+
+    STEPS.forEach((id, i) => {
+      setTimeout(() => {
+        spinnerText.textContent = MSGS[i] || '';
+        const el = document.getElementById(id);
+        el.style.display = 'block';
+        el.classList.add('visible');
+
+        if (i === STEPS.length - 1) {
+          setTimeout(() => {
+            spinnerRow.style.display = 'none';
+            btn.disabled = false;
+          }, 600);
+        }
+      }, DELAYS[i]);
+    });
+  }
+</script>
+</body>
+</html>

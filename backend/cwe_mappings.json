@@ -3,6 +3,14 @@
     "cwes": ["CWE-89"],
     "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries or an ORM. Never concatenate user input into SQL strings."
   },
+  "postgres": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries or an ORM. Never concatenate user input into SQL strings."
+  },
+  "sqlite": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries with ? placeholders. Never build queries with string formatting."
+  },
   "sql": {
     "cwes": ["CWE-89"],
     "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries or an ORM. Never concatenate user input into SQL strings."
@@ -15,9 +23,29 @@
     "cwes": ["CWE-89"],
     "warning": "Avoid CWE-89 (SQL Injection): Use parameterised queries with placeholders, never f-strings or .format()."
   },
+  "cursor": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Pass values as parameters to cursor.execute(), never format them into the query string."
+  },
+  "execute": {
+    "cwes": ["CWE-89"],
+    "warning": "Avoid CWE-89 (SQL Injection): Use parameterised execute() calls with a separate values tuple, never string interpolation."
+  },
+  "mongodb": {
+    "cwes": ["CWE-943"],
+    "warning": "Avoid CWE-943 (NoSQL Injection): Validate and sanitise query operators. Never pass raw user input as a query filter object."
+  },
   "login": {
     "cwes": ["CWE-521", "CWE-798"],
     "warning": "Avoid CWE-521 (Weak Password Requirements): Enforce minimum length >8 and use bcrypt for hashing. Avoid CWE-798 (Hardcoded Credentials): Never hardcode passwords or secrets."
+  },
+  "register": {
+    "cwes": ["CWE-521", "CWE-798"],
+    "warning": "Avoid CWE-521: Enforce minimum password length >8 and hash with bcrypt or argon2. Avoid CWE-798: Never hardcode default credentials."
+  },
+  "signup": {
+    "cwes": ["CWE-521"],
+    "warning": "Avoid CWE-521 (Weak Password Requirements): Enforce minimum length >8, reject common passwords, and hash with bcrypt or argon2."
   },
   "password": {
     "cwes": ["CWE-521", "CWE-798"],
@@ -26,6 +54,98 @@
   "auth": {
     "cwes": ["CWE-521", "CWE-798"],
     "warning": "Avoid CWE-521: Enforce strong password policies. Avoid CWE-798: Load secrets from environment variables, never hardcode them."
+  },
+  "token": {
+    "cwes": ["CWE-287"],
+    "warning": "Avoid CWE-287 (Improper Authentication): Validate tokens on every request, use short expiry times, and store them securely."
+  },
+  "jwt": {
+    "cwes": ["CWE-287", "CWE-798"],
+    "warning": "Avoid CWE-287: Always verify JWT signatures and reject alg=none. Avoid CWE-798: Never hardcode the JWT secret — load it from an environment variable."
+  },
+  "session": {
+    "cwes": ["CWE-384"],
+    "warning": "Avoid CWE-384 (Session Fixation): Regenerate the session ID after login. Set session cookies with HttpOnly, Secure, and SameSite=Strict."
+  },
+  "secret": {
+    "cwes": ["CWE-798"],
+    "warning": "Avoid CWE-798 (Hardcoded Credentials): Load secrets from environment variables or a secrets manager. Never commit them to source code."
+  },
+  "api_key": {
+    "cwes": ["CWE-798"],
+    "warning": "Avoid CWE-798 (Hardcoded Credentials): Never hardcode API keys in source code. Load them from environment variables."
+  },
+  "credentials": {
+    "cwes": ["CWE-798"],
+    "warning": "Avoid CWE-798 (Hardcoded Credentials): Never embed credentials in code. Use environment variables or a secrets manager."
+  },
+  "hash": {
+    "cwes": ["CWE-328"],
+    "warning": "Avoid CWE-328 (Weak Hash): Never use MD5 or SHA1 for security-sensitive hashing. Use bcrypt, argon2, or SHA-256 minimum."
+  },
+  "md5": {
+    "cwes": ["CWE-328"],
+    "warning": "Avoid CWE-328 (Weak Hash): MD5 is cryptographically broken. Use bcrypt or argon2 for passwords, SHA-256+ for integrity checks."
+  },
+  "sha1": {
+    "cwes": ["CWE-328"],
+    "warning": "Avoid CWE-328 (Weak Hash): SHA1 is deprecated for security use. Use SHA-256 or stronger, or bcrypt/argon2 for passwords."
+  },
+  "random": {
+    "cwes": ["CWE-338"],
+    "warning": "Avoid CWE-338 (Weak PRNG): Never use random or math.random for security-sensitive values. Use secrets or os.urandom() instead."
+  },
+  "reset": {
+    "cwes": ["CWE-338"],
+    "warning": "Avoid CWE-338 (Weak PRNG): Password reset tokens must be generated with secrets.token_urlsafe(), never with random. Short expiry required."
+  },
+  "generate": {
+    "cwes": ["CWE-338"],
+    "warning": "Avoid CWE-338 (Weak PRNG): Any security-sensitive value (tokens, keys, nonces) must be generated with secrets or os.urandom(), never random."
+  },
+  "config": {
+    "cwes": ["CWE-798"],
+    "warning": "Avoid CWE-798 (Hardcoded Credentials): Never store passwords, API keys, or secrets in config files committed to source control. Use environment variables."
+  },
+  "serialize": {
+    "cwes": ["CWE-502"],
+    "warning": "Avoid CWE-502 (Deserialization of Untrusted Data): Never deserialize data from untrusted sources with pickle or marshal. Use JSON with strict schema validation."
+  },
+  "deserialize": {
+    "cwes": ["CWE-502"],
+    "warning": "Avoid CWE-502 (Deserialization of Untrusted Data): Never deserialize untrusted input. Validate and sanitise all data before processing."
+  },
+  "parse": {
+    "cwes": ["CWE-611"],
+    "warning": "Avoid CWE-611 (XML External Entity): If parsing XML, disable external entity resolution. Use defusedxml or set feature flags to block XXE."
+  },
+  "redirect": {
+    "cwes": ["CWE-601"],
+    "warning": "Avoid CWE-601 (Open Redirect): Validate redirect targets against an allowlist. Never redirect to a URL supplied directly by the user."
+  },
+  "url": {
+    "cwes": ["CWE-601"],
+    "warning": "Avoid CWE-601 (Open Redirect): Validate and allowlist redirect URLs. Reject absolute URLs from user input."
+  },
+  "log": {
+    "cwes": ["CWE-532"],
+    "warning": "Avoid CWE-532 (Sensitive Data in Logs): Never log passwords, tokens, or PII. Mask or redact sensitive fields before logging."
+  },
+  "logging": {
+    "cwes": ["CWE-532"],
+    "warning": "Avoid CWE-532 (Sensitive Data in Logs): Never log passwords, tokens, or PII. Mask or redact sensitive fields before logging."
+  },
+  "admin": {
+    "cwes": ["CWE-285"],
+    "warning": "Avoid CWE-285 (Improper Authorization): Enforce role checks server-side on every request. Never rely on client-supplied role or admin flags."
+  },
+  "role": {
+    "cwes": ["CWE-285"],
+    "warning": "Avoid CWE-285 (Improper Authorization): Validate roles and permissions server-side. Never trust user-supplied role values."
+  },
+  "permission": {
+    "cwes": ["CWE-285"],
+    "warning": "Avoid CWE-285 (Improper Authorization): Enforce least privilege. Check permissions on every protected resource access."
   },
   "upload": {
     "cwes": ["CWE-434"],
@@ -47,6 +167,14 @@
     "cwes": ["CWE-78"],
     "warning": "Avoid CWE-78 (OS Command Injection): Never use os.system() with user input. Use subprocess with shell=False and argument lists."
   },
+  "exec": {
+    "cwes": ["CWE-78"],
+    "warning": "Avoid CWE-78 (OS Command Injection): Never pass user input to exec() or shell commands. Use subprocess with a fixed argument list."
+  },
+  "shell": {
+    "cwes": ["CWE-78"],
+    "warning": "Avoid CWE-78 (OS Command Injection): Never construct shell commands from user input. Use subprocess with shell=False."
+  },
   "eval": {
     "cwes": ["CWE-78"],
     "warning": "Avoid CWE-78: Never use eval() or exec() on user-supplied input. Use safer alternatives like ast.literal_eval()."
@@ -63,6 +191,10 @@
     "cwes": ["CWE-611"],
     "warning": "Avoid CWE-611 (XML External Entity): Disable external entity processing. Use defusedxml instead of xml.etree."
   },
+  "flask": {
+    "cwes": ["CWE-94"],
+    "warning": "Avoid CWE-94 (Code Injection): Never run a Flask app with debug=True in any non-local context. Set debug=False or control it via an environment variable."
+  },
   "render": {
     "cwes": ["CWE-79"],
     "warning": "Avoid CWE-79 (Cross-Site Scripting): Never insert user input into HTML without escaping. Use render_template() not render_template_string() with raw input."
@@ -74,9 +206,5 @@
   "cookie": {
     "cwes": ["CWE-614"],
     "warning": "Avoid CWE-614: Set Secure, HttpOnly, and SameSite flags on all cookies. Never store sensitive data in cookies without encryption."
-  },
-  "secret": {
-    "cwes": ["CWE-798"],
-    "warning": "Avoid CWE-798 (Hardcoded Credentials): Load secrets from environment variables or a secrets manager. Never commit them to source code."
   }
 }

@@ -2,7 +2,7 @@ from engine_b import scan_code
 from llm_client import call_llm
 
 
-def build_repair_prompt(code, vulnerabilities):
+def build_repair_prompt(code, vulnerabilities, security_context=None):
     """Build a structured repair prompt from scanner findings."""
     vuln_lines = []
     for i, v in enumerate(vulnerabilities, 1):
@@ -13,20 +13,36 @@ def build_repair_prompt(code, vulnerabilities):
 
     vuln_block = "\n".join(vuln_lines)
 
+    context_block = ""
+    if security_context:
+        cwe_list = ", ".join(security_context)
+        context_block = (
+            f"SECURITY REQUIREMENTS (CWEs relevant to this code): {cwe_list}\n\n"
+        )
+
     return (
         f"The following Python code has security vulnerabilities. "
         f"Fix ALL of them and return ONLY the corrected code in a ```python``` block.\n\n"
+        f"{context_block}"
         f"VULNERABILITIES FOUND:\n{vuln_block}\n\n"
         f"CODE TO FIX:\n```python\n{code}\n```\n\n"
         f"Return ONLY the fixed Python code. No explanations."
     )
 
 
-def repair_loop(code, initial_vulns, model_name, max_iterations=5):
+def repair_loop(code, initial_vulns, model_name, max_iterations=5, security_context=None):
     """
     Run the repair loop: send vulns to LLM, get patched code, re-scan.
     Returns a list of iteration records and the final code.
     """
+    if not code:
+        return {
+            "final_code": "",
+            "final_status": "no_code",
+            "iterations": [],
+            "total_iterations": 0,
+        }
+
     iterations = []
     current_code = code
     current_vulns = initial_vulns
@@ -36,7 +52,7 @@ def repair_loop(code, initial_vulns, model_name, max_iterations=5):
             break
 
         # Build repair prompt and call LLM
-        repair_prompt = build_repair_prompt(current_code, current_vulns)
+        repair_prompt = build_repair_prompt(current_code, current_vulns, security_context)
         raw_response = call_llm(repair_prompt, model_name)
         new_vulns, clean_code = scan_code(raw_response)
 

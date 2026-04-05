@@ -2,15 +2,19 @@ from flask import Flask, request, jsonify
 from flask_cors import CORS
 import json
 import os
+from collections import defaultdict
+from dotenv import load_dotenv
+
+load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 from engine_a import enrich_prompt
 from engine_b import scan_code
 from engine_c import repair_loop
 from llm_client import call_llm
-from database import init_db, save_run, get_all_runs
+from database import init_db, save_run, get_all_runs, get_db
 
 app = Flask(__name__)
-CORS(app)
+CORS(app, origins="*")
 
 # Load demo prompts
 PROMPTS_PATH = os.path.join(os.path.dirname(__file__), "prompts.json")
@@ -54,15 +58,17 @@ def run_pipeline():
 
     # --- Step 1: Engine A (enrichment) ---
     if mode in ("enriched", "enriched_repair"):
-        enriched, matched_cwes, matched_keywords = enrich_prompt(prompt)
+        enriched, matched_cwes, matched_keywords, keyword_cwe_pairs = enrich_prompt(prompt)
     else:
         enriched = prompt
         matched_cwes = []
         matched_keywords = []
+        keyword_cwe_pairs = []
 
     result["enriched_prompt"] = enriched
     result["matched_cwes"] = matched_cwes
     result["matched_keywords"] = matched_keywords
+    result["keyword_cwe_pairs"] = keyword_cwe_pairs
 
     # --- Step 2: LLM call ---
     try:
@@ -79,8 +85,11 @@ def run_pipeline():
     result["vuln_count"] = len(vulnerabilities)
 
     # --- Step 4: Engine C (repair) ---
-    if mode == "enriched_repair" and vulnerabilities:
-        repair_result = repair_loop(clean_code, vulnerabilities, model, max_iterations=3)
+    if mode == "enriched_repair" and vulnerabilities and clean_code:
+        repair_result = repair_loop(
+            clean_code, vulnerabilities, model,
+            max_iterations=3, security_context=matched_cwes or None
+        )
         result["repair_result"] = repair_result
         result["final_status"] = repair_result["final_status"]
         result["total_iterations"] = repair_result["total_iterations"]
@@ -117,16 +126,36 @@ def compare_models():
         for mode in ["plain", "enriched", "enriched_repair"]:
             # Engine A
             if mode in ("enriched", "enriched_repair"):
-                enriched, matched_cwes, _ = enrich_prompt(prompt)
+                enriched, matched_cwes, matched_keywords, keyword_cwe_pairs = enrich_prompt(prompt)
             else:
                 enriched = prompt
                 matched_cwes = []
+                matched_keywords = []
+                keyword_cwe_pairs = []
 
             # LLM call
             try:
                 raw_response = call_llm(enriched, model)
             except Exception as e:
-                results[model][mode] = {"error": str(e)}
+                error_entry = {"error": str(e)}
+                results[model][mode] = error_entry
+                save_run({
+                    "prompt_id": prompt_id,
+                    "prompt_text": prompt,
+                    "enriched_prompt": enriched,
+                    "matched_cwes": matched_cwes,
+                    "matched_keywords": matched_keywords,
+                    "keyword_cwe_pairs": keyword_cwe_pairs,
+                    "model": model,
+                    "mode": mode,
+                    "generated_code": "",
+                    "clean_code": "",
+                    "scan_results": [],
+                    "vuln_count": 0,
+                    "repair_result": {},
+                    "final_status": "llm_error",
+                    "total_iterations": 0,
+                })
                 continue
 
             # Engine B
@@ -135,6 +164,8 @@ def compare_models():
             entry = {
                 "enriched_prompt": enriched,
                 "matched_cwes": matched_cwes,
+                "matched_keywords": matched_keywords,
+                "keyword_cwe_pairs": keyword_cwe_pairs,
                 "generated_code": raw_response,
                 "clean_code": clean_code,
                 "scan_results": vulns,
@@ -142,8 +173,11 @@ def compare_models():
             }
 
             # Engine C
-            if mode == "enriched_repair" and vulns:
-                repair_result = repair_loop(clean_code, vulns, model, max_iterations=3)
+            if mode == "enriched_repair" and vulns and clean_code:
+                repair_result = repair_loop(
+                    clean_code, vulns, model,
+                    max_iterations=3, security_context=matched_cwes or None
+                )
                 entry["repair_result"] = repair_result
                 entry["final_status"] = repair_result["final_status"]
                 entry["total_iterations"] = repair_result["total_iterations"]
@@ -160,6 +194,8 @@ def compare_models():
                 "prompt_text": prompt,
                 "enriched_prompt": enriched,
                 "matched_cwes": matched_cwes,
+                "matched_keywords": matched_keywords,
+                "keyword_cwe_pairs": keyword_cwe_pairs,
                 "model": model,
                 "mode": mode,
                 "generated_code": raw_response,
@@ -178,6 +214,106 @@ def compare_models():
 def history():
     """Return all saved runs."""
     return jsonify(get_all_runs())
+
+
+@app.route("/api/stats", methods=["GET"])
+def stats():
+    """
+    Aggregate vuln reduction stats across all named demo prompt runs.
+    For each (prompt_id, model, mode) group, uses the most recent run.
+    Only includes runs where prompt_id is a real prompt ID (not 'custom'/'').
+    """
+    conn = get_db()
+    rows = conn.execute("""
+        SELECT prompt_id, prompt_text, model, mode, vuln_count, final_status, total_iterations
+        FROM runs
+        WHERE prompt_id NOT IN ('custom', '') AND prompt_id IS NOT NULL
+          AND id IN (
+              SELECT MAX(id) FROM runs
+              WHERE prompt_id NOT IN ('custom', '') AND prompt_id IS NOT NULL
+              GROUP BY prompt_id, model, mode
+          )
+        ORDER BY prompt_id, model, mode
+    """).fetchall()
+    conn.close()
+
+    # Group: by_data[prompt_id][model][mode] = {vuln_count, final_status, ...}
+    by_data = defaultdict(lambda: defaultdict(dict))
+    prompt_texts = {}
+
+    for row in rows:
+        pid = row["prompt_id"]
+        prompt_texts[pid] = row["prompt_text"]
+        by_data[pid][row["model"]][row["mode"]] = {
+            "vuln_count": row["vuln_count"],
+            "final_status": row["final_status"],
+            "total_iterations": row["total_iterations"],
+        }
+
+    def reduction_pct(plain, other):
+        if plain is None or other is None or plain == 0:
+            return None
+        return round((plain - other) / plain * 100)
+
+    def avg(lst):
+        return round(sum(lst) / len(lst), 1) if lst else None
+
+    # Per-prompt breakdown
+    by_prompt = []
+    for pid in sorted(by_data.keys()):
+        entry = {"prompt_id": pid, "prompt_text": prompt_texts[pid]}
+        for model in ["gemini", "groq"]:
+            modes = by_data[pid].get(model, {})
+            plain   = modes.get("plain",           {}).get("vuln_count")
+            enriched = modes.get("enriched",        {}).get("vuln_count")
+            repair  = modes.get("enriched_repair",  {}).get("vuln_count")
+            r_status = modes.get("enriched_repair", {}).get("final_status")
+            entry[model] = {
+                "plain":    plain,
+                "enriched": enriched,
+                "repair":   repair,
+                "repair_status": r_status,
+                "enriched_reduction_pct": reduction_pct(plain, enriched),
+                "repair_reduction_pct":   reduction_pct(plain, repair),
+            }
+        by_prompt.append(entry)
+
+    # Overall per-model aggregates
+    overall = {}
+    for model in ["gemini", "groq"]:
+        plain_vals, enriched_vals, repair_vals = [], [], []
+        enriched_reds, repair_reds, repair_statuses = [], [], []
+
+        for pid in by_data:
+            modes = by_data[pid].get(model, {})
+            plain   = modes.get("plain",          {}).get("vuln_count")
+            enriched = modes.get("enriched",       {}).get("vuln_count")
+            repair  = modes.get("enriched_repair", {}).get("vuln_count")
+            r_status = modes.get("enriched_repair",{}).get("final_status")
+
+            if plain    is not None: plain_vals.append(plain)
+            if enriched is not None: enriched_vals.append(enriched)
+            if repair   is not None: repair_vals.append(repair)
+            if r_status is not None: repair_statuses.append(r_status)
+
+            if plain is not None and plain > 0:
+                if enriched is not None: enriched_reds.append((plain - enriched) / plain * 100)
+                if repair   is not None: repair_reds.append((plain - repair)   / plain * 100)
+
+        conv_count = sum(1 for s in repair_statuses if s == "clean")
+        overall[model] = {
+            "plain_avg":              avg(plain_vals),
+            "enriched_avg":           avg(enriched_vals),
+            "repair_avg":             avg(repair_vals),
+            "enriched_reduction_pct": round(sum(enriched_reds) / len(enriched_reds)) if enriched_reds else None,
+            "repair_reduction_pct":   round(sum(repair_reds)   / len(repair_reds))   if repair_reds   else None,
+            "convergence_rate":       round(conv_count / len(repair_statuses) * 100)  if repair_statuses else None,
+            "convergence_count":      conv_count,
+            "total_repair_runs":      len(repair_statuses),
+            "prompts_covered":        len([p for p in by_data if model in by_data[p]]),
+        }
+
+    return jsonify({"overall": overall, "by_prompt": by_prompt})
 
 
 if __name__ == "__main__":

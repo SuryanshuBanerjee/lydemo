@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LeBlanc — Use Case Demo</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<div class="header">
+  <h1>LeBlanc</h1>
+  <span class="tag">USE CASE DEMO</span>
+  <span class="header-right">OOSE — Experiment No. 01</span>
+</div>
+
+<div class="lab-bar">
+  <div>Batch: <b>A3</b></div>
+  <div>Roll No.: <b>16010423099</b></div>
+  <div>Experiment No.: <b>01</b></div>
+  <div>Aim: <b>Secure LLM Code Generation Pipeline</b></div>
+</div>
+
+<div class="container">
+
+  <div class="uc-title">
+    <h2>Use Case: Secure Code Generation via LeBlanc Pipeline</h2>
+    <p>Actor: Developer &nbsp;·&nbsp; Trigger: User submits a coding prompt &nbsp;·&nbsp; Goal: Vulnerability-free generated code</p>
+  </div>
+
+  <!-- Step 1 — Input -->
+  <div class="card">
+    <div class="card-head">
+      <div class="step-num">1</div>
+      <h3>User Input — Coding Prompt</h3>
+      <span class="eng">TRIGGER</span>
+    </div>
+    <div class="card-body">
+      <div class="prompt-row">
+        <input class="prompt-input" id="promptInput" placeholder="Enter a coding prompt…" />
+        <button class="btn" id="runBtn" onclick="runDemo()">Run Pipeline</button>
+      </div>
+      <div class="hint">No live backend — results are pre-computed for illustration. &nbsp;<b onclick="fillPrompt()">Load demo prompt</b></div>
+    </div>
+  </div>
+
+  <div id="spinnerRow" class="spinner-row">
+    <div class="spinner"></div>
+    <span id="spinnerText"></span>
+  </div>
+
+  <!-- Step 2 — Engine A -->
+  <div class="card step" id="step1">
+    <div class="card-head">
+      <div class="step-num done">2</div>
+      <h3>Prompt Enrichment — CWE Warnings Appended</h3>
+      <span class="eng">ENGINE A</span>
+    </div>
+    <div class="card-body">
+      <div class="label">Keywords detected → CWE mappings</div>
+      <div>
+        <div class="cwe-row"><span class="kw">login</span><span>→</span><span class="cwe-id">CWE-521</span><span class="cwe-desc">Weak Password Requirements</span></div>
+        <div class="cwe-row"><span class="kw">mysql</span><span>→</span><span class="cwe-id">CWE-89</span><span class="cwe-desc">SQL Injection</span></div>
+        <div class="cwe-row"><span class="kw">password</span><span>→</span><span class="cwe-id">CWE-798</span><span class="cwe-desc">Hard-coded Credentials</span></div>
+      </div>
+      <div class="enriched-block">Write a Flask endpoint for user login that checks username and password against a MySQL database
+
+IMPORTANT SECURITY REQUIREMENTS:
+- Use parameterised queries; never interpolate user input into SQL strings (CWE-89)
+- Load secrets from environment variables; do not hard-code credentials (CWE-798)
+- Hash passwords with bcrypt or argon2; enforce minimum complexity (CWE-521)
+
+Write secure code that avoids the above vulnerabilities.</div>
+    </div>
+  </div>
+
+  <!-- Step 3 — LLM Output (plain) -->
+  <div class="card step" id="step2">
+    <div class="card-head">
+      <div class="step-num done">3</div>
+      <h3>LLM Output — Plain Mode (No Security Context)</h3>
+      <span class="eng">GEMINI 2.5 FLASH</span>
+    </div>
+    <div class="card-body">
+      <div class="badge-row"><span class="badge badge-vuln">2 VULNERABILITIES DETECTED</span></div>
+<div class="code-block">from flask import Flask, request, jsonify
+import mysql.connector
+
+app = Flask(__name__)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+
+    conn = mysql.connector.connect(
+        host="localhost", user="root",
+        password="admin123",          # ← CWE-798: hard-coded credential
+        database="users"
+    )
+    cursor = conn.cursor()
+    query = f"SELECT * FROM users WHERE username='{username}' AND password='{password}'"
+    cursor.execute(query)             # ← CWE-89: SQL injection
+    user = cursor.fetchone()
+
+    if user:
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error"})</div>
+    </div>
+  </div>
+
+  <!-- Step 4 — Engine B -->
+  <div class="card step" id="step3">
+    <div class="card-head">
+      <div class="step-num done">4</div>
+      <h3>Vulnerability Scan — Static Analysis Results</h3>
+      <span class="eng">ENGINE B · SEMGREP + BANDIT</span>
+    </div>
+    <div class="card-body">
+      <div class="vuln-item">
+        <div class="vuln-top"><span class="vuln-cwe">CWE-89</span><span class="sev sev-critical">Critical</span></div>
+        <div class="vuln-msg">String formatting used to build SQL query — user input interpolated directly.</div>
+        <div class="vuln-line">Line 16 · bandit B608</div>
+      </div>
+      <div class="vuln-item">
+        <div class="vuln-top"><span class="vuln-cwe">CWE-798</span><span class="sev sev-high">High</span></div>
+        <div class="vuln-msg">Hard-coded password "admin123" found in database connection parameters.</div>
+        <div class="vuln-line">Line 12 · bandit B105</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 5 — Engine C -->
+  <div class="card step" id="step4">
+    <div class="card-head">
+      <div class="step-num done">5</div>
+      <h3>Iterative Repair — Findings Fed Back to LLM</h3>
+      <span class="eng">ENGINE C · ITERATION 1 OF 3</span>
+    </div>
+    <div class="card-body">
+      <div class="repair-note">Vulnerability report sent to LLM with repair instruction. Re-scan after repair: <b>0 vulnerabilities — clean.</b></div>
+<div class="code-block clean">from flask import Flask, request, jsonify
+import mysql.connector, bcrypt, os
+
+app = Flask(__name__)
+
+@app.route('/login', methods=['POST'])
+def login():
+    username = request.form['username']
+    password = request.form['password']
+
+    conn = mysql.connector.connect(
+        host=os.environ.get("DB_HOST"),
+        user=os.environ.get("DB_USER"),
+        password=os.environ.get("DB_PASS"),   # ← env var, not hard-coded
+        database=os.environ.get("DB_NAME")
+    )
+    cursor = conn.cursor()
+    query = "SELECT password_hash FROM users WHERE username = %s"
+    cursor.execute(query, (username,))        # ← parameterised query
+    row = cursor.fetchone()
+
+    if row and bcrypt.checkpw(password.encode(), row[0].encode()):
+        return jsonify({"status": "success"})
+    return jsonify({"status": "error"})</div>
+      <div class="final-bar">
+        <span class="check">✓</span>
+        <div>
+          <h4>Pipeline complete — code is clean</h4>
+          <p>SQL injection fixed (parameterised query) · Hard-coded credentials removed (env vars) · Repaired in 1 iteration</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<script src="app.js"></script>
+</body>
+</html>

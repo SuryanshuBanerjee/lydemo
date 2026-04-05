@@ -19,11 +19,14 @@ def call_gemini(prompt):
 
     genai.configure(api_key=GEMINI_KEY)
     model = genai.GenerativeModel(
-        "gemini-2.5-flash",
+        "gemma-4-31b-it",
         system_instruction=SYSTEM_INSTRUCTION,
     )
     response = model.generate_content(prompt)
-    return response.text
+    text = response.text
+    if not text or not text.strip():
+        raise ValueError("Gemini returned an empty response")
+    return text
 
 
 def call_groq(prompt):
@@ -41,7 +44,10 @@ def call_groq(prompt):
         temperature=0.3,
         max_tokens=2048,
     )
-    return response.choices[0].message.content
+    content = response.choices[0].message.content
+    if not content or not content.strip():
+        raise ValueError("Groq returned an empty response")
+    return content
 
 
 def call_llm(prompt, model_name):

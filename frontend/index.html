@@ -14,6 +14,10 @@
   .header { background: #fdf8f2; border-bottom: 1px solid #e0d0bc; padding: 16px 32px; display: flex; align-items: center; gap: 16px; }
   .header h1 { font-size: 22px; font-weight: 600; color: #2c1e12; }
   .header .tag { background: #7a4f2f; color: #fdf8f2; font-size: 11px; padding: 2px 8px; font-weight: 600; letter-spacing: 0.4px; }
+  .header-right { margin-left: auto; display: flex; align-items: center; gap: 20px; }
+  .header-desc { color: #a08878; font-size: 13px; }
+  .history-link { font-size: 12px; font-weight: 600; color: #7a4f2f; text-decoration: none; border: 1px solid #dcc9b2; padding: 4px 12px; }
+  .history-link:hover { background: #f0e4d4; }
 
   .container { max-width: 1400px; margin: 0 auto; padding: 24px 32px; }
 
@@ -87,9 +91,33 @@
 
   /* Enrichment preview */
   .enriched-block { background: #eef3fc; border: 1px solid #c8d8f0; padding: 12px 16px; margin-bottom: 16px; font-size: 13px; color: #2e4a78; white-space: pre-wrap; line-height: 1.5; }
-  .enriched-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
+  .enriched-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
 
   .section-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; font-weight: 600; }
+
+  /* Section header row (label + toggle button) */
+  .section-header { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+  .section-header .section-label { margin-bottom: 0; }
+  .toggle-btn { font-size: 10px; padding: 1px 7px; border: 1px solid #dcc9b2; background: transparent; color: #a08878; cursor: pointer; font-weight: 600; letter-spacing: 0.3px; font-family: inherit; }
+  .toggle-btn:hover { border-color: #9a6845; color: #5e3a22; }
+  .toggle-btn.on { background: #7a4f2f; color: #fdf8f2; border-color: #7a4f2f; }
+
+  /* CWE triggers */
+  .cwe-triggers { background: #f5ede2; border: 1px solid #dcc9b2; padding: 8px 12px; margin-bottom: 12px; }
+  .cwe-trigger-row { display: flex; align-items: baseline; gap: 6px; padding: 3px 0; border-bottom: 1px solid #ecddc8; font-size: 12px; }
+  .cwe-trigger-row:last-child { border-bottom: none; }
+  .cwe-keyword { font-family: 'Consolas', monospace; color: #5e3a22; font-weight: 600; }
+  .cwe-arrow { color: #c0a898; }
+  .cwe-id { color: #3b5e8a; font-weight: 600; }
+
+  /* Code diff */
+  .diff-block { font-family: 'Consolas', 'Fira Code', monospace; font-size: 12px; line-height: 1.5; border: 1px solid #dcc9b2; overflow-x: auto; max-height: 280px; overflow-y: auto; margin-bottom: 12px; }
+  .diff-line { padding: 1px 12px; white-space: pre; }
+  .diff-add { background: #d4f0dc; color: #1a5c2e; }
+  .diff-remove { background: #fce4e0; color: #7a2218; }
+  .diff-same { color: #8a7a70; }
+  .diff-collapsed { background: #f0e4d4; color: #a08878; text-align: center; padding: 3px 12px; font-size: 11px; }
+  .diff-iter-label { font-size: 11px; color: #a08878; text-transform: uppercase; letter-spacing: 0.4px; margin: 10px 0 4px; font-weight: 600; }
 
   /* Empty state */
   .empty-state { text-align: center; padding: 80px 40px; color: #c0a898; }
@@ -105,12 +133,87 @@
 const { useState, useEffect } = React;
 const API = "http://localhost:5000/api";
 
+/* ── Line-level LCS diff ── */
+function computeLineDiff(oldStr, newStr) {
+  const a = (oldStr || '').split('\n');
+  const b = (newStr || '').split('\n');
+  const m = a.length, n = b.length;
+  const dp = Array.from({length: m + 1}, () => new Array(n + 1).fill(0));
+  for (let i = 1; i <= m; i++)
+    for (let j = 1; j <= n; j++)
+      dp[i][j] = a[i-1] === b[j-1] ? dp[i-1][j-1] + 1 : Math.max(dp[i-1][j], dp[i][j-1]);
+  const diff = [];
+  let i = m, j = n;
+  while (i > 0 || j > 0) {
+    if (i > 0 && j > 0 && a[i-1] === b[j-1]) {
+      diff.unshift({ type: 'same', line: a[i-1] }); i--; j--;
+    } else if (j > 0 && (i === 0 || dp[i][j-1] >= dp[i-1][j])) {
+      diff.unshift({ type: 'add', line: b[j-1] }); j--;
+    } else {
+      diff.unshift({ type: 'remove', line: a[i-1] }); i--;
+    }
+  }
+  return diff;
+}
+
+function DiffView({ oldCode, newCode, label }) {
+  const diff = computeLineDiff(oldCode, newCode);
+  const CONTEXT = 2;
+  const changed = new Set();
+  diff.forEach((d, i) => { if (d.type !== 'same') changed.add(i); });
+  const visible = new Set();
+  changed.forEach(i => {
+    for (let k = Math.max(0, i - CONTEXT); k <= Math.min(diff.length - 1, i + CONTEXT); k++)
+      visible.add(k);
+  });
+  const addCount = diff.filter(d => d.type === 'add').length;
+  const removeCount = diff.filter(d => d.type === 'remove').length;
+
+  if (addCount === 0 && removeCount === 0)
+    return <div className="diff-iter-label">{label} — no changes detected</div>;
+
+  const rows = [];
+  let collapseStart = null;
+  diff.forEach((d, i) => {
+    if (visible.has(i)) {
+      if (collapseStart !== null) {
+        const cnt = i - collapseStart;
+        rows.push(<div key={`c${i}`} className="diff-line diff-collapsed">··· {cnt} unchanged line{cnt !== 1 ? 's' : ''} ···</div>);
+        collapseStart = null;
+      }
+      const cls = d.type === 'add' ? 'diff-add' : d.type === 'remove' ? 'diff-remove' : 'diff-same';
+      const pfx = d.type === 'add' ? '+' : d.type === 'remove' ? '-' : ' ';
+      rows.push(<div key={i} className={`diff-line ${cls}`}>{pfx} {d.line}</div>);
+    } else {
+      if (collapseStart === null) collapseStart = i;
+    }
+  });
+  if (collapseStart !== null) {
+    const cnt = diff.length - collapseStart;
+    rows.push(<div key="cend" className="diff-line diff-collapsed">··· {cnt} unchanged line{cnt !== 1 ? 's' : ''} ···</div>);
+  }
+  return (
+    <div>
+      <div className="diff-iter-label">
+        {label} &nbsp;
+        <span style={{color:'#2e6b44', fontWeight:700}}>+{addCount}</span>
+        {' '}
+        <span style={{color:'#8c3228', fontWeight:700}}>-{removeCount}</span>
+      </div>
+      <div className="diff-block">{rows}</div>
+    </div>
+  );
+}
+
+/* ── Main App ── */
 function App() {
   const [prompt, setPrompt] = useState("");
+  const [promptId, setPromptId] = useState("custom");
   const [demoPrompts, setDemoPrompts] = useState([]);
   const [results, setResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [statusMsg, setStatusMsg] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   const [activeTabs, setActiveTabs] = useState({ gemini: "enriched_repair", groq: "enriched_repair" });
 
   useEffect(() => {
@@ -121,6 +224,7 @@ function App() {
     if (!prompt.trim()) return;
     setLoading(true);
     setResults(null);
+    setErrorMsg("");
 
     const steps = [
       "Running Engine A — enriching prompt with CWE warnings...",
@@ -145,17 +249,17 @@ function App() {
       const res = await fetch(`${API}/compare`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: prompt.trim(), prompt_id: "demo" }),
+        body: JSON.stringify({ prompt: prompt.trim(), prompt_id: promptId }),
       });
       const data = await res.json();
       if (data.error) {
-        setStatusMsg(`Error: ${data.error}`);
+        setErrorMsg(`Error: ${data.error}`);
       } else {
         setResults(data);
         setStatusMsg("");
       }
     } catch (err) {
-      setStatusMsg(`Error: ${err.message}`);
+      setErrorMsg(`Error: ${err.message}`);
     } finally {
       clearInterval(interval);
       setLoading(false);
@@ -171,13 +275,13 @@ function App() {
       <div className="header">
         <h1>LeBlanc</h1>
         <span className="tag">PIPELINE DEMO</span>
-        <span style={{ color: "#a08878", fontSize: 13, marginLeft: "auto" }}>
-          Automated Prompt Enrichment &amp; Iterative Repair for Secure LLM-Generated Code
-        </span>
+        <div className="header-right">
+          <span className="header-desc">Automated Prompt Enrichment &amp; Iterative Repair for Secure LLM-Generated Code</span>
+          <a className="history-link" href="history.html">History →</a>
+        </div>
       </div>
 
       <div className="container">
-        {/* Prompt Input */}
         <div className="prompt-section">
           <h2>Enter a coding prompt</h2>
           <div className="prompt-row">
@@ -185,7 +289,7 @@ function App() {
               className="prompt-input"
               placeholder="e.g. Write a Flask endpoint for user login with MySQL..."
               value={prompt}
-              onChange={e => setPrompt(e.target.value)}
+              onChange={e => { setPrompt(e.target.value); setPromptId("custom"); }}
               onKeyDown={e => e.key === "Enter" && !loading && runPipeline()}
             />
             <button className="btn btn-primary" onClick={runPipeline} disabled={loading || !prompt.trim()}>
@@ -194,25 +298,29 @@ function App() {
           </div>
           <div className="demo-prompts">
             {demoPrompts.map(p => (
-              <span key={p.id} className="demo-chip" onClick={() => setPrompt(p.prompt)}>
-                {p.prompt.length > 60 ? p.prompt.slice(0, 60) + "..." : p.prompt}
+              <span key={p.id} className="demo-chip" onClick={() => { setPrompt(p.prompt); setPromptId(p.id); }}>
+                <span style={{color:"#a08878", fontWeight:700, marginRight:5}}>{p.id}</span>
+                {p.prompt.length > 55 ? p.prompt.slice(0, 55) + "..." : p.prompt}
               </span>
             ))}
           </div>
         </div>
 
-        {/* Status Bar */}
         {loading && (
           <div className="status-bar">
             <div className="spinner" />
             <span className="status-text">{statusMsg}</span>
           </div>
         )}
+        {errorMsg && !loading && (
+          <div className="status-bar" style={{borderColor:"#f0bcb4", background:"#fceae8"}}>
+            <span className="status-text" style={{color:"#8c3228"}}>{errorMsg}</span>
+          </div>
+        )}
 
-        {/* Results */}
         {results ? (
           <div className="results-grid">
-            <ModelCard model="gemini" label="Gemini 2.5 Flash" data={results.gemini} tab={activeTabs.gemini} setTab={setTab} />
+            <ModelCard model="gemini" label="Gemma 4 31B" data={results.gemini} tab={activeTabs.gemini} setTab={setTab} />
             <ModelCard model="groq" label="Groq (Llama 3.3 70B)" data={results.groq} tab={activeTabs.groq} setTab={setTab} />
           </div>
         ) : !loading ? (
@@ -226,7 +334,11 @@ function App() {
   );
 }
 
+/* ── Model Card ── */
 function ModelCard({ model, label, data, tab, setTab }) {
+  const [showCweTriggers, setShowCweTriggers] = useState(false);
+  const [showCodeDelta, setShowCodeDelta] = useState(false);
+
   if (!data) return null;
 
   const modes = [
@@ -236,7 +348,12 @@ function ModelCard({ model, label, data, tab, setTab }) {
   ];
 
   const current = data[tab];
-  if (!current) return <div className="model-card"><div className="model-header"><span className={`model-name ${model}`}>{label}</span></div><div className="mode-content"><p style={{ color: "#a08878" }}>No data</p></div></div>;
+  if (!current) return (
+    <div className="model-card">
+      <div className="model-header"><span className={`model-name ${model}`}>{label}</span></div>
+      <div className="mode-content"><p style={{ color: "#a08878" }}>No data</p></div>
+    </div>
+  );
 
   if (current.error) return (
     <div className="model-card">
@@ -248,6 +365,11 @@ function ModelCard({ model, label, data, tab, setTab }) {
   const vulns = current.scan_results || [];
   const repairResult = current.repair_result || {};
   const iterations = repairResult.iterations || [];
+  const kwPairs = current.keyword_cwe_pairs || [];
+
+  // Build code snapshots for delta view: [initial, iter1, iter2, ...]
+  const codeSnapshots = [current.clean_code || ""];
+  iterations.forEach(it => codeSnapshots.push(it.code || ""));
 
   return (
     <div className="model-card">
@@ -288,10 +410,31 @@ function ModelCard({ model, label, data, tab, setTab }) {
           )}
         </div>
 
-        {/* Enriched prompt preview (only for enriched modes) */}
+        {/* Enriched prompt + CWE triggers toggle */}
         {tab !== "plain" && current.enriched_prompt && current.enriched_prompt !== current.prompt_text && (
           <div>
-            <div className="enriched-label">Engine A — Enriched Prompt</div>
+            <div className="section-header">
+              <span className="enriched-label">Engine A — Enriched Prompt</span>
+              {kwPairs.length > 0 && (
+                <button
+                  className={`toggle-btn ${showCweTriggers ? "on" : ""}`}
+                  onClick={() => setShowCweTriggers(v => !v)}
+                >
+                  CWE Triggers
+                </button>
+              )}
+            </div>
+            {showCweTriggers && kwPairs.length > 0 && (
+              <div className="cwe-triggers">
+                {kwPairs.map((p, i) => (
+                  <div key={i} className="cwe-trigger-row">
+                    <span className="cwe-keyword">"{p.keyword}"</span>
+                    <span className="cwe-arrow">→</span>
+                    <span className="cwe-id">{p.cwes.join(", ")}</span>
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="enriched-block">{current.enriched_prompt}</div>
           </div>
         )}
@@ -313,10 +456,18 @@ function ModelCard({ model, label, data, tab, setTab }) {
           </div>
         )}
 
-        {/* Repair timeline */}
+        {/* Repair timeline + code delta toggle */}
         {iterations.length > 0 && (
           <div>
-            <div className="section-label">Engine C — Repair Timeline</div>
+            <div className="section-header">
+              <span className="section-label" style={{marginBottom:0}}>Engine C — Repair Timeline</span>
+              <button
+                className={`toggle-btn ${showCodeDelta ? "on" : ""}`}
+                onClick={() => setShowCodeDelta(v => !v)}
+              >
+                Code Delta
+              </button>
+            </div>
             <div className="repair-timeline">
               <div className="repair-step">
                 <div className="repair-dot has-vulns" />
@@ -333,6 +484,18 @@ function ModelCard({ model, label, data, tab, setTab }) {
                 </div>
               ))}
             </div>
+            {showCodeDelta && codeSnapshots.length > 1 && (
+              <div>
+                {iterations.map((it, i) => (
+                  <DiffView
+                    key={i}
+                    oldCode={codeSnapshots[i]}
+                    newCode={codeSnapshots[i + 1]}
+                    label={`Iteration ${it.iteration}`}
+                  />
+                ))}
+              </div>
+            )}
           </div>
         )}
 

@@ -10,33 +10,34 @@ def load_mappings():
 def enrich_prompt(prompt):
     """
     Scans the prompt for security-relevant keywords and appends CWE warnings.
-    Returns (enriched_prompt, matched_cwes, matched_keywords).
+    Returns (enriched_prompt, matched_cwes, matched_keywords, keyword_cwe_pairs).
     """
     mappings = load_mappings()
     prompt_lower = prompt.lower()
 
-    matched = {}  # keyword -> mapping entry (deduplicate by CWE)
-    seen_cwes = set()
+    matched = {}  # keyword -> mapping entry
 
     for keyword, entry in mappings.items():
         if keyword in prompt_lower:
-            for cwe in entry["cwes"]:
-                if cwe not in seen_cwes:
-                    seen_cwes.add(cwe)
-                    matched[keyword] = entry
-                    break
+            matched[keyword] = entry
 
     if not matched:
-        return prompt, [], []
+        return prompt, [], [], []
 
     warnings = []
+    seen_warnings = set()
     all_cwes = []
     all_keywords = []
+    keyword_cwe_pairs = []
 
     for keyword, entry in matched.items():
-        warnings.append(f"- {entry['warning']}")
+        warning_text = f"- {entry['warning']}"
+        if warning_text not in seen_warnings:
+            seen_warnings.add(warning_text)
+            warnings.append(warning_text)
         all_cwes.extend(entry["cwes"])
         all_keywords.append(keyword)
+        keyword_cwe_pairs.append({"keyword": keyword, "cwes": entry["cwes"]})
 
     # Deduplicate CWEs
     all_cwes = list(dict.fromkeys(all_cwes))
@@ -49,4 +50,4 @@ def enrich_prompt(prompt):
         f"Write secure code that avoids the above vulnerabilities."
     )
 
-    return enriched, all_cwes, all_keywords
+    return enriched, all_cwes, all_keywords, keyword_cwe_pairs

@@ -5,23 +5,39 @@ import os
 import re
 
 
+def _looks_like_python(text):
+    """Return True if the text appears to contain Python code."""
+    python_indicators = [
+        "def ", "import ", "class ", "return ", " = ", "if ", "for ",
+        "while ", "try:", "except", "with ", "print(",
+    ]
+    return any(indicator in text for indicator in python_indicators)
+
+
 def extract_code_from_response(response_text):
     """
     LLMs often wrap code in markdown blocks. Extract the actual Python code.
+    Returns empty string if no Python code can be found.
     """
+    if not response_text:
+        return ""
+
     # Try to find ```python ... ``` block
     pattern = r"```(?:python)?\s*\n(.*?)```"
     matches = re.findall(pattern, response_text, re.DOTALL)
     if matches:
         return matches[0].strip()
 
-    # If no code block, check if the response looks like code already
+    # If no code block, filter prose lines and check if remainder looks like Python
     lines = response_text.strip().split("\n")
     code_lines = [
         l for l in lines
         if not l.startswith("Here") and not l.startswith("This") and not l.startswith("Note")
     ]
-    return "\n".join(code_lines).strip()
+    result = "\n".join(code_lines).strip()
+    if not _looks_like_python(result):
+        return ""
+    return result
 
 
 def run_semgrep(filepath):
@@ -130,11 +146,10 @@ def scan_code(code_string):
 
     all_findings = semgrep_findings + bandit_findings
 
-    # Filter: medium+ severity only, skip errors
+    # Filter: medium+ severity only; keep scanner errors so callers can surface them
     filtered = [
         f for f in all_findings
         if f["severity"].upper() in ("MEDIUM", "HIGH", "CRITICAL", "WARNING", "ERROR")
-        and f["rule"] != "error"
     ]
 
     return filtered, clean_code
